@@ -1,4 +1,6 @@
 //! Native platform services: file dialogs (rfd), filesystem, codecs.
+// iPadOS: the file-dialog filters and arboard helpers serve rfd and arboard, which iPadOS replaces (photocraft-ios).
+#![cfg_attr(target_os = "ios", allow(dead_code, unused_imports))]
 
 use photocraft_codecs::{ChannelLayout, EncodeOptions, Image, SampleType as CS};
 use photocraft_color::{ColorMode, SampleType};
@@ -112,6 +114,7 @@ fn dialog_file_name(suggested: &str, windows: bool) -> Option<String> {
 /// Shows an Open or Save dialog without blocking the event loop (#673, #574): rfd's async dialog
 /// is created here, on the main thread, with the window as its parent (a sheet on macOS, an owned
 /// modal window elsewhere), and a helper thread waits for it and hands the answer to the app.
+#[cfg(not(target_os = "ios"))]
 fn show_file_dialog(request: FileDialogRequest, parent: Option<&eframe::Frame>, reply: FileDialogReply) {
     let mut dialog = rfd::AsyncFileDialog::new();
     if let Some(parent) = parent {
@@ -170,11 +173,47 @@ fn show_file_dialog(request: FileDialogRequest, parent: Option<&eframe::Frame>, 
     }
 }
 
+/// iPadOS: the Files app's document picker over the window. Open picks files where they are (Save
+/// writes back to them); Save picks the folder, and the file keeps its suggested name.
+#[cfg(target_os = "ios")]
+fn show_file_dialog(request: FileDialogRequest, parent: Option<&eframe::Frame>, reply: FileDialogReply) {
+    use photocraft_ios::PickKind;
+    let Some(parent) = parent else {
+        reply.send(None);
+        return;
+    };
+    let (kind, start, answer): (PickKind, Option<PathBuf>, fn(Vec<String>) -> Option<FileDialogAnswer>) = match request {
+        FileDialogRequest::Open { multiple, initial_dir, .. } => {
+            (PickKind::Files { multiple }, initial_dir.map(PathBuf::from), |paths| Some(FileDialogAnswer::Paths(paths)))
+        }
+        FileDialogRequest::Folder { initial_dir } => {
+            (PickKind::Folder, initial_dir.map(PathBuf::from), |paths| paths.into_iter().next().map(FileDialogAnswer::FolderTo))
+        }
+        FileDialogRequest::Save { suggested } => {
+            let file_name = dialog_file_name(&suggested, false).unwrap_or_else(|| "Untitled.pcraft".to_string());
+            let start = Path::new(&suggested).parent().filter(|p| !p.as_os_str().is_empty()).map(Path::to_path_buf);
+            (PickKind::SaveIn { file_name }, start, |paths| paths.into_iter().next().map(FileDialogAnswer::SaveTo))
+        }
+    };
+    let reply = std::rc::Rc::new(RefCell::new(Some(reply)));
+    let pending = reply.clone();
+    let shown = photocraft_ios::pick(parent, kind, start, move |paths| {
+        if let Some(reply) = pending.borrow_mut().take() {
+            reply.send(paths.and_then(answer));
+        }
+    });
+    if !shown && let Some(reply) = reply.borrow_mut().take() {
+        reply.send(Some(FileDialogAnswer::Unavailable("The Files document picker couldn't be shown".to_string())));
+    }
+}
+
+#[cfg(not(target_os = "ios"))]
 fn path_of(file: &rfd::FileHandle) -> String {
     file.path().to_string_lossy().into_owned()
 }
 
 /// Runs `future` to completion on this thread, sleeping until it is woken.
+#[cfg(not(target_os = "ios"))]
 fn block_on<T>(future: impl Future<Output = T>) -> T {
     struct Unpark(std::thread::Thread);
     impl std::task::Wake for Unpark {
@@ -404,8 +443,61 @@ fn shell_word(s: &str) -> String {
     if s.bytes().all(|b| b.is_ascii_alphanumeric() || b"/._-+:,@".contains(&b)) { s.to_string() } else { format!("'{}'", s.replace('\'', r"'\''")) }
 }
 
-pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) -> Services {
+/// iPadOS: images on UIPasteboard (PNG out; PNG, JPEG, TIFF… in, decoded by our codecs).
+#[cfg(target_os = "ios")]
+fn clipboard_services() -> (photocraft_ui_egui::ClipboardSetFn, photocraft_ui_egui::ClipboardGetFn) {
+    let set: photocraft_ui_egui::ClipboardSetFn = Box::new(|w: u32, h: u32, px: &[u8]| {
+        let img = Image::from_u8(w, h, ChannelLayout::Rgba, px.to_vec()).map_err(|e| e.to_string())?;
+        let png = photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &EncodeOptions::default()).map_err(|e| e.to_string())?;
+        photocraft_ios::pasteboard_set_png(&png);
+        Ok(())
+    });
+    let get: photocraft_ui_egui::ClipboardGetFn = Box::new(|| {
+        let img = photocraft_codecs::decode(&photocraft_ios::pasteboard_image()?).ok()?;
+        Some((img.width(), img.height(), img.to_rgba8()))
+    });
+    (set, get)
+}
+
+/// arboard (macOS, Windows, Linux).
+#[cfg(not(target_os = "ios"))]
+fn clipboard_services() -> (photocraft_ui_egui::ClipboardSetFn, photocraft_ui_egui::ClipboardGetFn) {
     let clip: Rc<RefCell<Option<arboard::Clipboard>>> = Rc::default();
+    let set: photocraft_ui_egui::ClipboardSetFn = {
+        let clip = clip.clone();
+        Box::new(move |w: u32, h: u32, px: &[u8]| {
+            let mut slot = clip.try_borrow_mut().map_err(|_| "clipboard is busy".to_string())?;
+            let cb = match slot.as_mut() {
+                Some(c) => c,
+                None => slot.insert(arboard::Clipboard::new().map_err(|e| e.to_string())?),
+            };
+            cb.set_image(arboard::ImageData { width: w as usize, height: h as usize, bytes: std::borrow::Cow::Borrowed(px) }).map_err(|e| e.to_string())
+        })
+    };
+    let get: photocraft_ui_egui::ClipboardGetFn = Box::new(move || {
+        let mut slot = clip.try_borrow_mut().ok()?;
+        let cb = match slot.as_mut() {
+            Some(c) => c,
+            None => slot.insert(arboard::Clipboard::new().ok()?),
+        };
+        // Copied files first: Finder also puts the file's icon on the clipboard as an
+        // image, which would otherwise paste instead of the file.
+        if let Some(img) = cb.get().file_list().ok().and_then(|paths| image_from_files(&paths)) {
+            return Some(img);
+        }
+        if let Ok(img) = cb.get_image() {
+            return Some((img.width as u32, img.height as u32, img.bytes.into_owned()));
+        }
+        #[cfg(target_os = "linux")]
+        return wayland_clipboard_image();
+        #[cfg(not(target_os = "linux"))]
+        None
+    });
+    (set, get)
+}
+
+pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) -> Services {
+    let (clipboard_set_image, clipboard_get_image) = clipboard_services();
     let automation_read = automation.clone().map(|workspace| {
         Box::new(move |path: &str| {
             let bytes = workspace.read(path).map_err(|error| error.to_string())?;
@@ -461,39 +553,8 @@ pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) ->
         inbox: None,
         open_url: Some(Box::new(|url: &str| open::that(url).map_err(|e| e.to_string()))),
         beep: Some(platform_beep),
-        clipboard_set_image: Some({
-            let clip = clip.clone();
-            Box::new(move |w: u32, h: u32, px: &[u8]| {
-                let mut slot = clip.try_borrow_mut().map_err(|_| "clipboard is busy".to_string())?;
-                let cb = match slot.as_mut() {
-                    Some(c) => c,
-                    None => slot.insert(arboard::Clipboard::new().map_err(|e| e.to_string())?),
-                };
-                cb.set_image(arboard::ImageData { width: w as usize, height: h as usize, bytes: std::borrow::Cow::Borrowed(px) }).map_err(|e| e.to_string())
-            })
-        }),
-        clipboard_get_image: Some({
-            let clip = clip.clone();
-            Box::new(move || {
-                let mut slot = clip.try_borrow_mut().ok()?;
-                let cb = match slot.as_mut() {
-                    Some(c) => c,
-                    None => slot.insert(arboard::Clipboard::new().ok()?),
-                };
-                // Copied files first: Finder also puts the file's icon on the clipboard as an
-                // image, which would otherwise paste instead of the file.
-                if let Some(img) = cb.get().file_list().ok().and_then(|paths| image_from_files(&paths)) {
-                    return Some(img);
-                }
-                if let Ok(img) = cb.get_image() {
-                    return Some((img.width as u32, img.height as u32, img.bytes.into_owned()));
-                }
-                #[cfg(target_os = "linux")]
-                return wayland_clipboard_image();
-                #[cfg(not(target_os = "linux"))]
-                None
-            })
-        }),
+        clipboard_set_image: Some(clipboard_set_image),
+        clipboard_get_image: Some(clipboard_get_image),
         load_prefs: Some(Box::new(|| std::fs::read_to_string(prefs_file()?).ok())),
         photoshop_shortcuts: Some(Box::new(|| crate::photoshop_settings::live_keyboard_shortcuts(&|k| std::env::var_os(k)))),
         save_prefs: Some(Box::new(|text: &str| write_atomic(&prefs_file().ok_or("no config directory")?, text.as_bytes()))),
@@ -508,8 +569,17 @@ pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) ->
         // Set by main, which starts loading the store before the window opens.
         preset_store: None,
         is_wayland: false,
+        safe_area: safe_area_service(),
         ..recovery_services(recovery_dir())
     }
+}
+
+/// The notch, screen corners and home indicator: the phone layout keeps them clear.
+fn safe_area_service() -> Option<fn() -> [f32; 4]> {
+    #[cfg(target_os = "ios")]
+    return Some(photocraft_ios::safe_area_insets);
+    #[cfg(not(target_os = "ios"))]
+    None
 }
 
 /// Preferences ▸ General ▸ Beep When Done: the platform's default information beep.

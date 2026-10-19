@@ -36,6 +36,7 @@ photocraft-engine = { path = "crates/engine" }
 photocraft-ui-egui = { path = "crates/ui-egui" }
 photocraft-testkit = { path = "crates/testkit" }
 photocraft-tablet = { path = "crates/tablet" }
+photocraft-ios = { path = "crates/ios" }
 
 # external
 craft-print = { git = "https://github.com/storytold/craft-libs", rev = "3d37da389a3618ab9b76109da11416e9ca4ea719" }
@@ -60,6 +61,13 @@ log = "0.4"
 rayon = "1"
 criterion = { version = "0.5", default-features = false }
 getrandom = "0.3"
+
+# iPadOS: winit 0.30 and egui-winit with hardware keyboard (shortcuts, ⌘ as Command) and
+# trackpad/mouse support (hover, right click, scroll, pinch, cursor hiding). The changes only touch
+# winit's iOS backend and egui-winit's macOS-or-iOS checks; see vendor/winit/IOS-CHANGES.md.
+[patch.crates-io]
+winit = { path = "vendor/winit" }
+egui-winit = { path = "vendor/egui-winit" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

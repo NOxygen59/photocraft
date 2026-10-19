@@ -75,7 +75,7 @@ pub fn sticky_mods(app: &PhotocraftApp, mut m: egui::Modifiers) -> egui::Modifie
     m.alt |= s.sticky_alt;
     if s.sticky_command {
         m.command = true;
-        if cfg!(target_os = "macos") {
+        if cfg!(any(target_os = "macos", target_os = "ios")) {
             m.mac_cmd = true;
         } else {
             m.ctrl = true;

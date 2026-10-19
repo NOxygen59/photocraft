@@ -2633,14 +2633,21 @@ fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     // File › Open Recent, newest first (on the web there are no paths to reopen).
     let recent: Vec<String> = if cfg!(target_arch = "wasm32") { Vec::new() } else { app.ui.recent_files.iter().take(HOME_RECENT).cloned().collect() };
     let recent_h = if recent.is_empty() { 0.0 } else { 34.0 + recent.len() as f32 * HOME_RECENT_ROW };
-    let card = Rect::from_center_size(area.center(), egui::vec2(460.0, 330.0 + recent_h));
+    // A phone's canvas is narrower than the card: it narrows, and what sits side by side stacks.
+    let card_w = 460.0f32.min(area.width() - 16.0).max(200.0);
+    let narrow = card_w < 420.0;
+    let card = Rect::from_center_size(area.center(), egui::vec2(card_w, if narrow { 420.0 } else { 330.0 } + recent_h));
     let new_label = crate::shortcuts::command_label(app, "New document…", "file.new");
     let open_label = crate::shortcuts::command_label(app, "Open…", "file.open");
     ui.scope_builder(egui::UiBuilder::new().max_rect(card), |ui| {
         ui.vertical_centered(|ui| {
+            let title = ui.painter().layout_no_wrap(tl!("PhotoCraft").into(), crate::theme::semibold(38.0), t.text);
+            let by = ui.painter().layout_no_wrap(tl!("open source").into(), egui::FontId::proportional(13.0), t.text_faint);
+            if title.size().x + by.size().x + 10.0 > card.width() {
+                ui.label(egui::RichText::new(tl!("PhotoCraft")).font(crate::theme::semibold(32.0)).color(t.text));
+                ui.label(egui::RichText::new(tl!("open source")).color(t.text_faint).size(13.0));
+            } else {
             ui.horizontal(|ui| {
-                let title = ui.painter().layout_no_wrap(tl!("PhotoCraft").into(), crate::theme::semibold(38.0), t.text);
-                let by = ui.painter().layout_no_wrap(tl!("open source").into(), egui::FontId::proportional(13.0), t.text_faint);
                 let total = title.size().x + by.size().x + 10.0;
                 ui.add_space(((card.width() - total) / 2.0).max(0.0));
                 let (r, _) = ui.allocate_exact_size(title.size(), Sense::hover());
@@ -2648,12 +2655,11 @@ fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 let (r2, _) = ui.allocate_exact_size(egui::vec2(by.size().x + 10.0, r.height()), Sense::hover());
                 ui.painter().galley(egui::pos2(r2.left() + 10.0, r.bottom() - by.size().y - 8.0), by, t.text_faint);
             });
+            }
             ui.add_space(6.0);
             ui.label(egui::RichText::new(tl!("Create a new document or open an existing file.")).color(t.text_dim).size(14.0));
             ui.add_space(22.0);
-            ui.horizontal(|ui| {
-                ui.add_space(((card.width() - 2.0 * 190.0 - 12.0) / 2.0).max(0.0));
-                ui.spacing_mut().item_spacing.x = 12.0;
+            let mut buttons = |ui: &mut egui::Ui| {
                 if crate::widgets::primary_button(ui, &new_label, 190.0).clicked() {
                     let fields = app.new_document_fields();
                     app.ui.open_dialog(crate::state::DialogKind::NewDocument, fields);
@@ -2661,8 +2667,21 @@ fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 if crate::widgets::secondary_button(ui, &open_label, 190.0).clicked() {
                     let _ = app.open_dialog_file();
                 }
-            });
+            };
+            if narrow {
+                ui.spacing_mut().item_spacing.y = 10.0;
+                buttons(ui);
+            } else {
+                ui.horizontal(|ui| {
+                    ui.add_space(((card.width() - 2.0 * 190.0 - 12.0) / 2.0).max(0.0));
+                    ui.spacing_mut().item_spacing.x = 12.0;
+                    buttons(ui);
+                });
+            }
             ui.add_space(22.0);
+            if narrow {
+                ui.label(egui::RichText::new(start_screen_drop_hint(app)).color(t.text_faint));
+            } else {
             ui.horizontal(|ui| {
                 let msg = start_screen_drop_hint(app);
                 let g = ui.painter().layout_no_wrap(msg.to_string(), egui::FontId::proportional(12.5), t.text_faint);
@@ -2671,6 +2690,7 @@ fn start_screen(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 crate::icons::paint(ui, r, "image", 15.0, t.text_faint);
                 ui.label(egui::RichText::new(msg).color(t.text_faint));
             });
+            }
             if !recent.is_empty() {
                 ui.add_space(22.0);
                 home_recent(app, ui, &recent);

@@ -51,6 +51,14 @@ pub fn link_row(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let width: f32 = links.iter().map(|(l, _)| ui.painter().layout_no_wrap((*l).into(), font.clone(), t.text).size().x).sum::<f32>()
         + 2.0 * ui.painter().layout_no_wrap(sep.into(), font.clone(), t.text).size().x;
     let mut clicked: Option<&str> = None;
+    // Too narrow for one row (a phone): one link per line.
+    if width > ui.available_width() {
+        for (label, url) in links {
+            if ui.link(egui::RichText::new(label).font(font.clone()).color(t.accent)).on_hover_text(url).clicked() {
+                clicked = Some(url);
+            }
+        }
+    } else {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
         ui.add_space(((ui.available_width() - width) / 2.0).max(0.0));
@@ -63,6 +71,7 @@ pub fn link_row(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             }
         }
     });
+    }
     if let Some(url) = clicked {
         open(app, ui.ctx(), url);
     }

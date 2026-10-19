@@ -1273,6 +1273,43 @@ pub fn menu_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> f32 {
     edge
 }
 
+/// Phones (`phone::is_compact`): one button holding the menus as submenus, as `menu_bar` has no
+/// room for ten titles. Returns the button's inner edge, as `menu_bar` returns the bar's.
+pub fn menu_button_compact(app: &mut PhotocraftApp, ui: &mut egui::Ui) -> f32 {
+    let lang = crate::i18n::current();
+    let rtl = crate::direction::is_rtl();
+    let mut clicked: Option<String> = None;
+    let mut nav = crate::menu_nav::Nav::load(ui.ctx());
+    let t = crate::theme::Tokens::get(ui.ctx());
+    let app_ref: &PhotocraftApp = app;
+    let button = egui::Button::image(crate::icons::image("align-justify", 18.0, t.text_dim)).frame(false).min_size(egui::vec2(36.0, 30.0));
+    let response = egui::containers::menu::MenuButton::from_button(button)
+        .ui(ui, |ui| {
+            // Built while the menu is open only, as in `menu_bar`.
+            let items = menu_items(app_ref);
+            for top in TOP_MENUS {
+                let mine: Vec<&MenuItem> = items.iter().filter(|i| i.path.first().map(String::as_str) == Some(top)).collect();
+                ui.menu_button(crate::i18n::tr(lang, top), |ui| {
+                    ui.set_min_width(220.0);
+                    if mine.is_empty() {
+                        ui.weak(crate::i18n::tr(lang, "(coming soon)"));
+                    }
+                    render_level(ui, &mine, 1, &mut clicked, &mut nav);
+                });
+            }
+        })
+        .0;
+    nav.store(ui.ctx());
+    if let Some(id) = clicked {
+        let ctx = ui.ctx().clone();
+        if let Err(e) = invoke(app, &ctx, &id, json!({})) {
+            app.ui.status = e;
+            app.ui.status_error = true;
+        }
+    }
+    if rtl { response.rect.left() } else { response.rect.right() }
+}
+
 fn press_gesture_id() -> egui::Id {
     egui::Id::new("menu-press-gesture")
 }

@@ -9,6 +9,8 @@
 //!
 //! The probe only ever explains an empty answer; it never stops a dialog from opening. Anything
 //! it can't tell counts as present, so a working system never sees the message.
+// iPadOS: iPadOS always has the document picker.
+#![cfg_attr(target_os = "ios", allow(dead_code, unused_imports))]
 
 use std::sync::OnceLock;
 

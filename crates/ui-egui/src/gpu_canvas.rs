@@ -847,7 +847,10 @@ pub fn use_adapter_limits_with(setup: &mut egui_wgpu::WgpuSetup, on_adapter: imp
 pub fn device_limits(adapter: &wgpu::Adapter) -> wgpu::Limits {
     let base = if adapter.get_info().backend == wgpu::Backend::Gl { wgpu::Limits::downlevel_webgl2_defaults() } else { wgpu::Limits::default() };
     let a = adapter.limits();
-    wgpu::Limits { max_texture_dimension_2d: a.max_texture_dimension_2d, max_buffer_size: a.max_buffer_size, ..base }
+    let limits = wgpu::Limits { max_texture_dimension_2d: a.max_texture_dimension_2d, max_buffer_size: a.max_buffer_size, ..base };
+    // iPadOS: no more than the GPU offers (the iOS Simulator's has fewer inter-stage shader
+    // variables than wgpu's defaults, and its device request fails otherwise).
+    if cfg!(target_os = "ios") { limits.or_worse_values_from(&a) } else { limits }
 }
 
 /// Milliseconds since first call (monotonic). Always 0 on wasm, where `std::time` is unavailable.

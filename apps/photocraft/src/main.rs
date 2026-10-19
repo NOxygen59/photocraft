@@ -60,8 +60,9 @@ const APP_ID: &str = "ai.storyteller.photocraft";
 
 /// Windows and Linux: no OS title bar; the app's top bar is the title bar, with its own caption
 /// buttons and edge resizing (`photocraft_ui_egui::titlebar`), as Photoshop does on Windows. macOS
-/// keeps its traffic lights over the integrated title strip.
-const CUSTOM_TITLEBAR: bool = !cfg!(target_os = "macos");
+/// keeps its traffic lights over the integrated title strip. iPadOS and iOS have no window to
+/// minimize, maximize or close: no caption buttons there either.
+const CUSTOM_TITLEBAR: bool = !cfg!(any(target_os = "macos", target_os = "ios"));
 
 /// Whether this start draws its own title bar: Windows and Linux do, unless Preferences ›
 /// Interface › System Title Bar asks for the system's (#1271, #1316). Read from the saved

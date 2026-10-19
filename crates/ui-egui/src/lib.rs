@@ -147,6 +147,7 @@ pub mod paint_mouse;
 pub mod palette;
 mod panel_docking;
 pub mod panels;
+pub mod phone;
 pub mod parity;
 pub mod patch_preview;
 pub(crate) mod pattern_fill_ui;
@@ -486,6 +487,10 @@ pub struct Services {
     /// while AppKit's run loop is still going crashes or hangs Touch Bar Macs (#1575, #1458).
     /// Without one, eframe closes the window and the app ends with it.
     pub quit: Option<QuitFn>,
+    /// The window's safe area insets in points (top, left, bottom, right): where the notch or
+    /// Dynamic Island, the screen corners and the home indicator are (iOS). The phone layout keeps
+    /// them clear (`phone::safe_area`).
+    pub safe_area: Option<fn() -> [f32; 4]>,
 }
 
 /// A document histogram being computed off the UI thread: (document, revision, receiver of
@@ -1835,6 +1840,7 @@ impl eframe::App for PhotocraftApp {
         // system title bar this is where the document name lives, as the in-app title is hidden.
         panels::sync_window_title(self, &ctx);
         let chrome = !self.ui.view.hides_chrome();
+        phone::safe_area(self, ui);
         if chrome && self.ui.panels.menu_bar {
             panels::title_bar(self, ui);
         }

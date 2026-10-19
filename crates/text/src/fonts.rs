@@ -772,6 +772,13 @@ pub(crate) fn system_font_dirs() -> Vec<std::path::PathBuf> {
         if let Some(h) = &home {
             v.push(h.join("Library/Fonts"));
         }
+    } else if cfg!(target_os = "ios") {
+        // iPadOS: the system's fonts (readable from the sandbox, in subfolders the scan walks)
+        // and fonts dropped in the app's own Documents/Fonts in Files.
+        v.push(PathBuf::from("/System/Library/Fonts"));
+        if let Some(h) = &home {
+            v.push(h.join("Documents/Fonts"));
+        }
     } else if cfg!(target_os = "windows") {
         let windir = std::env::var_os("WINDIR").map_or_else(|| PathBuf::from("C:\\Windows"), PathBuf::from);
         v.push(windir.join("Fonts"));

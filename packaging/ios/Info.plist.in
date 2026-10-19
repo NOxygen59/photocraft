@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: packaging/ios/package.sh substitutes @SHORT_VERSION@, @VERSION@ and @BUILD_SHA@. -->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>PhotoCraft</string>
+  <key>CFBundleName</key>
+  <string>PhotoCraft</string>
+  <key>CFBundleExecutable</key>
+  <string>PhotoCraft</string>
+  <key>CFBundleIdentifier</key>
+  <string>ai.storyteller.photocraft.ios</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@SHORT_VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@SHORT_VERSION@</string>
+  <key>PhotoCraftVersion</key>
+  <string>@VERSION@</string>
+  <key>PhotoCraftBuildCommit</key>
+  <string>@BUILD_SHA@</string>
+  <key>CFBundleSupportedPlatforms</key>
+  <array><string>iPhoneOS</string></array>
+  <!-- Must match IPHONEOS_DEPLOYMENT_TARGET in package.sh. -->
+  <key>MinimumOSVersion</key>
+  <string>16.0</string>
+  <key>LSRequiresIPhoneOS</key>
+  <true/>
+  <!-- iPad only: the Photoshop-style interface needs the room. -->
+  <!-- iPhone and iPad: phones get the compact layout (photocraft_ui_egui::phone). -->
+  <key>UIDeviceFamily</key>
+  <array><integer>1</integer><integer>2</integer></array>
+  <key>UIRequiredDeviceCapabilities</key>
+  <array><string>arm64</string><string>metal</string></array>
+  <!-- Without a launch screen iPadOS runs the app letterboxed at a legacy size. -->
+  <key>UILaunchScreen</key>
+  <dict/>
+  <!-- Not full screen only: Split View, Slide Over, Stage Manager and floating-window tweaks
+       (Aerial) can size the app; winit sizes the drawing from its view. -->
+  <key>UIStatusBarHidden</key>
+  <true/>
+  <key>UIViewControllerBasedStatusBarAppearance</key>
+  <false/>
+  <key>UIApplicationSupportsIndirectInputEvents</key>
+  <true/>
+  <!-- iPhone: no upside-down portrait (the Dynamic Island and the home indicator would swap). -->
+  <key>UISupportedInterfaceOrientations</key>
+  <array>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+    <string>UIInterfaceOrientationPortrait</string>
+    <string>UIInterfaceOrientationPortraitUpsideDown</string>
+  </array>
+  <!-- The app's Documents folder shows in Files (On My iPad › PhotoCraft). -->
+  <key>UIFileSharingEnabled</key>
+  <true/>
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
+  <key>CFBundleIcons</key>
+  <dict>
+    <key>CFBundlePrimaryIcon</key>
+    <dict>
+      <key>CFBundleIconFiles</key>
+      <array><string>AppIcon60x60</string></array>
+      <key>CFBundleIconName</key>
+      <string>AppIcon</string>
+    </dict>
+  </dict>
+  <key>CFBundleIcons~ipad</key>
+  <dict>
+    <key>CFBundlePrimaryIcon</key>
+    <dict>
+      <key>CFBundleIconFiles</key>
+      <array><string>AppIcon76x76</string><string>AppIcon83.5x83.5</string></array>
+      <key>CFBundleIconName</key>
+      <string>AppIcon</string>
+    </dict>
+  </dict>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © the PhotoCraft authors. MIT OR Apache-2.0.</string>
+  <!-- PhotoCraft's own format. -->
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>ai.storyteller.photocraft.document</string>
+      <key>UTTypeDescription</key>
+      <string>PhotoCraft Document</string>
+      <key>UTTypeConformsTo</key>
+      <array><string>public.data</string><string>public.image</string></array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array><string>pcraft</string></array>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>

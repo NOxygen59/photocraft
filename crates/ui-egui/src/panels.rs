@@ -619,6 +619,8 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 // this is the menus' inner edge, facing the title.
                 let menus_end = if app.services.native_menu.is_some() {
                     if rtl { ui.cursor().right() } else { ui.cursor().left() }
+                } else if crate::phone::is_compact(ui.ctx()) {
+                    crate::menus::menu_button_compact(app, ui)
                 } else {
                     crate::menus::menu_bar(app, ui)
                 };
@@ -1666,7 +1668,9 @@ pub fn right_dock(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let customized = crate::panel_docking::show(app, ui);
     let t = Tokens::get(ui.ctx());
     let p = app.ui.panels.clone();
-    if t.pro && !customized {
+    // A phone has room for the rail only: its buttons open a group as a sheet (`phone`).
+    let compact = crate::phone::is_compact(ui.ctx());
+    if t.pro && !customized && !compact {
         dock_panels(app, ui, &p, &t);
     }
     // Narrow icon rail, unless an embedding app hides it: shows, expands or collapses panel groups.
@@ -1693,9 +1697,17 @@ pub fn right_dock(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 for (icon, name, g) in entries {
                     // Studio floats Properties outside the dock.
                     let docked = t.pro || g != Group::Properties;
-                    let on = if customized { crate::panel_docking::rail_on(app, g) } else { g.shown(&p) && !(docked && app.ui.dock.is_collapsed(g)) };
+                    let on = if compact {
+                        crate::phone::sheet(ui.ctx()) == Some(g)
+                    } else if customized {
+                        crate::panel_docking::rail_on(app, g)
+                    } else {
+                        g.shown(&p) && !(docked && app.ui.dock.is_collapsed(g))
+                    };
                     if icons::rail_button(ui, icon, rb, on, name).clicked() {
-                        if customized {
+                        if compact {
+                            crate::phone::toggle_sheet(ui.ctx(), g);
+                        } else if customized {
                             crate::panel_docking::rail_click(app, g);
                         } else {
                             crate::dock::rail_click(app, g, docked);
@@ -1704,8 +1716,12 @@ pub fn right_dock(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                 }
             });
     }
-    if !t.pro && !customized {
+    if !t.pro && !customized && !compact {
         dock_panels(app, ui, &p, &t);
+    }
+    if compact {
+        let room = ui.available_rect_before_wrap();
+        crate::phone::show_sheet(app, ui, room, dock_body);
     }
     crate::dock::persist(app, ui.ctx());
 }

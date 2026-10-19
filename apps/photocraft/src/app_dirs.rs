@@ -84,7 +84,8 @@ pub fn resolve(env: impl Fn(&str) -> Option<OsString>, exe_dir: Option<&Path>) -
 /// The platform convention, from `env` (so tests can fake `HOME`/`APPDATA`/`XDG_CONFIG_HOME`).
 pub fn platform_dir(env: &impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
     let home = env("HOME").filter(|h| !h.is_empty()).map(PathBuf::from);
-    if cfg!(target_os = "macos") {
+    // iPadOS: HOME is the app's container.
+    if cfg!(any(target_os = "macos", target_os = "ios")) {
         return home.map(|h| h.join("Library/Application Support/Photocraft"));
     }
     if cfg!(windows) {

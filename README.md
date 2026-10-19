@@ -1,3 +1,39 @@
+> [!WARNING]
+> **Projet personnel « vibecodé ».** Tout le code de ce dépôt (ou, pour un fork, toutes les modifications) a été écrit par **Claude** (Anthropic, via Claude Code), à la demande spécifique de [@NOxygen59](https://github.com/NOxygen59), pour **son appareil précis** :
+>
+> **iPad Pro 12,9" 5ᵉ génération (puce M1) — 512 Go de stockage, 8 Go de RAM — iOS 16.6.1, jailbreak Dopamine (rootless) + TrollStore.**
+>
+> Rien n'est testé ni prévu pour un autre appareil. Pas de support, pas de feuille de route : c'est un dépôt d'archive personnel, publié pour pouvoir reprendre le travail plus tard (modifications, mises à jour).
+
+**Fork** de [storytold/photocraft](https://github.com/storytold/photocraft) (base : commit `706638b`, version 0.8.2), porté sur **iPad et iPhone / iOS 16** (`.tipa` pour TrollStore). Toutes les modifications sont sur la branche `ipad-ios16`.
+
+**Licence :** celle d'origine, MIT ou Apache-2.0 au choix (voir [LICENSE-MIT](LICENSE-MIT) et [LICENSE-APACHE](LICENSE-APACHE)). Elle couvre aussi les modifications. Aucune licence n'est ajoutée.
+
+### Modifications pour iPad et iPhone
+- **iOS** :
+  - crate `crates/ios` (`photocraft-ios`) : fichiers et presse-papiers, avec le code `unsafe` isolé (le reste du workspace l'interdit) ;
+  - HEIC ;
+  - démarrage GPU sur Metal, puis repli CPU ;
+  - préférences et polices comme sur iOS.
+- **`vendor/winit`** (0.30.13 patché, détail dans [vendor/winit/IOS-CHANGES.md](vendor/winit/IOS-CHANGES.md)) :
+  - clavier physique ;
+  - trackpad ;
+  - pointeur ;
+  - zones cliquables justes en fenêtré (Aerial, Stage Manager) ;
+  - correction du plantage au toucher du doigt (double emprunt `RefCell`).
+- **Gestes** :
+  - zoom et déplacement à deux doigts ;
+  - tap à deux doigts = annuler, à trois = rétablir ;
+  - rejet de la paume par iPadOS ;
+  - pression de l'Apple Pencil.
+- **`vendor/egui-winit`** : ⌘ = Commande, et une touche annulée relâche le bouton.
+- **iPhone XS → 18 Pro** : interface compacte qui s'adapte à la taille de l'écran (`crates/ui-egui/src/phone.rs`).
+- **Build** : `packaging/ios/` (`.tipa`, iOS 16.0 minimum).
+
+**Builds :** voir les [Releases](https://github.com/NOxygen59/photocraft/releases).
+
+---
+
 <p align="center">
   <a href="https://getartcraft.com/">
     <picture>

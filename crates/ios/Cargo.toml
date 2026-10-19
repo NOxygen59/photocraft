@@ -1,0 +1,24 @@
+[package]
+name = "photocraft-ios"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "iPadOS services for the PhotoCraft app: the Files document picker and the pasteboard"
+
+# An isolated `unsafe` helper crate, as photocraft-tablet is (craftrules never-crash, AGENTS.md):
+# UIKit's delegate protocols and the window's raw view need Objective-C interop. Only
+# `src/uikit.rs` allows `unsafe`; the crate's API is safe, and it is empty off iOS.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "=0.6.4"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSArray", "NSData", "NSDictionary", "NSObject", "NSString", "NSURL"] }
+objc2-ui-kit = { version = "=0.3.2", default-features = false, features = ["std", "block2", "objc2-uniform-type-identifiers", "UIApplication", "UIDocumentPickerViewController", "UIGeometry", "UIPasteboard", "UIResponder", "UIView", "UIViewController", "UIWindow"] }
+objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType", "UTCoreTypes"] }
+raw-window-handle = "0.6"
+log = { workspace = true }

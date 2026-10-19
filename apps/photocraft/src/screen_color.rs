@@ -1,5 +1,7 @@
 //! Desktop colour capture starts only on an explicit UI request. No snapshots are written to
 //! disk, transmitted or retained after a pick. Wayland delegates to its permission portal.
+// iPadOS: iPadOS has no screen capture for the colour picker.
+#![cfg_attr(target_os = "ios", allow(dead_code, unused_imports))]
 use photocraft_ui_egui::screen_picker::{Capture, MAX_PIXELS, Pending, ScreenImage, Service};
 
 pub fn service(cc: &eframe::CreationContext<'_>, wayland: bool) -> Option<Service> {

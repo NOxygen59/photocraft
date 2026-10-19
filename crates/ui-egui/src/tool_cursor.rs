@@ -90,10 +90,11 @@ fn close_ring() -> Vec<Vec2> {
     (0..16).map(|i| (i as f32 / 16.0 * std::f32::consts::TAU, vec2(9.0, 9.0))).map(|(a, c)| c + vec2(a.cos(), a.sin()) * 3.5).collect()
 }
 
-/// Can this pass show an OS cursor bitmap? eframe's immediate viewports and its web integration
-/// don't upload cursor images; every desktop root viewport does (winit custom cursors).
+/// Can this pass show an OS cursor bitmap? eframe's immediate viewports, its web integration and
+/// iPadOS (no custom pointer images: the system pointer hides while the shape is painted) don't
+/// upload cursor images; every desktop root viewport does (winit custom cursors).
 fn native(ctx: &egui::Context) -> bool {
-    cfg!(not(target_arch = "wasm32")) && ctx.viewport_id() == egui::ViewportId::ROOT
+    cfg!(not(any(target_arch = "wasm32", target_os = "ios"))) && ctx.viewport_id() == egui::ViewportId::ROOT
 }
 
 /// Bitmap pixels per egui point. winit takes an `NSCursor` image's dimensions as logical points on

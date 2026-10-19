@@ -347,9 +347,9 @@ fn modifiers_from(p: &Value) -> egui::Modifiers {
     egui::Modifiers {
         shift: flag("shift"),
         alt: flag("alt"),
-        command: if cfg!(target_os = "macos") { command } else { command || ctrl },
-        mac_cmd: cfg!(target_os = "macos") && command,
-        ctrl: if cfg!(target_os = "macos") { ctrl } else { command || ctrl },
+        command: if cfg!(any(target_os = "macos", target_os = "ios")) { command } else { command || ctrl },
+        mac_cmd: cfg!(any(target_os = "macos", target_os = "ios")) && command,
+        ctrl: if cfg!(any(target_os = "macos", target_os = "ios")) { ctrl } else { command || ctrl },
     }
 }
 

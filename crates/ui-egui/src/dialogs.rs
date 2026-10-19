@@ -112,19 +112,27 @@ fn show_modal<T>(
     interactive: bool,
     contents: impl FnOnce(&mut egui::Ui) -> T,
 ) -> egui::ModalResponse<T> {
+    let phone = crate::phone::is_compact(ctx);
     modal.show(ctx, |ui| {
         // Disable the entire older modal, including its resize grip, not just its body.
         if !interactive {
             ui.disable();
         }
         if resizable {
-            let max = (ctx.content_rect().size() - egui::vec2(40.0, 40.0)).max(egui::vec2(560.0, 400.0));
+            let room = ctx.content_rect().size() - egui::vec2(40.0, 40.0);
+            // A phone's screen is smaller than the desktop minimum: the screen is the limit.
+            let min = if phone { egui::vec2(560.0, 400.0).min(room) } else { egui::vec2(560.0, 400.0) };
+            let max = room.max(min);
             egui::Resize::default()
                 .id(id.with("resize"))
                 .default_size(egui::vec2(960.0, 900.0).min(max))
-                .min_size(egui::vec2(560.0, 400.0))
+                .min_size(min)
                 .max_size(max)
                 .show(ui, contents)
+        } else if phone {
+            // Narrowed to the screen (`fit` in `show`), a dialog may grow taller than it: it scrolls.
+            let room = ctx.content_rect().size() - egui::vec2(24.0, 40.0);
+            egui::ScrollArea::both().id_salt(id.with("phone-scroll")).max_width(room.x).max_height(room.y).auto_shrink([true, true]).show(ui, contents).inner
         } else {
             contents(ui)
         }
@@ -160,9 +168,13 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let start = pinned.or_else(|| ctx.data_mut(|m| m.get_persisted::<egui::Vec2>(place))).or_else(|| crate::blur_pins::first_place(&d.fields, ctx));
         let mut drag = egui::Vec2::ZERO;
         let mut sizing = false;
+        // On a phone a dialog is as wide as the screen allows: centred, not where it was left.
+        let phone = crate::phone::is_compact(ctx);
+        let room = (ctx.content_rect().width() - 24.0).max(200.0);
+        let fit = |w: f32| if phone { w.min(room) } else { w };
         let area = match start {
-            Some(offset) => egui::Modal::default_area(id).anchor(egui::Align2::LEFT_TOP, offset),
-            None => egui::Modal::default_area(id),
+            Some(offset) if !phone => egui::Modal::default_area(id).anchor(egui::Align2::LEFT_TOP, offset),
+            _ => egui::Modal::default_area(id),
         };
         // Only the last dialog takes input, and egui only lets the modal drawn on top take input,
         // so the last one must be drawn above the others. egui can raise an older one (it raises an
@@ -189,21 +201,21 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
             // rule and the button row fill the width they are given, so it needs its own maximum too.
             let compact = d.fields.contains_key("__compact");
             if !compact {
-                ui.set_min_width(380.0);
+                ui.set_min_width(fit(380.0));
             }
             let wide = crate::prefs_ui::width(&d.fields, (ctx.content_rect().width() - 48.0).max(380.0));
             if let Some(w) = wide {
-                ui.set_min_width(w.min(460.0));
+                ui.set_min_width(fit(w.min(460.0)));
             }
             if d.kind == DialogKind::NewDocument {
-                ui.set_min_width(800.0);
+                ui.set_min_width(fit(800.0));
             }
             // The About window: room for the contributor table, the same width on every tab.
             let about_tabs = d.kind == DialogKind::About && d.fields.get("systemInfo").and_then(Value::as_bool) != Some(true);
             if about_tabs {
-                ui.set_min_width(700.0);
+                ui.set_min_width(fit(700.0));
             }
-            ui.set_max_width(wide.unwrap_or(if d.kind == DialogKind::NewDocument {
+            ui.set_max_width(fit(wide.unwrap_or(if d.kind == DialogKind::NewDocument {
                 800.0
             } else if about_tabs {
                 700.0
@@ -213,22 +225,22 @@ pub fn show(app: &mut PhotocraftApp, ctx: &egui::Context) {
                 260.0
             } else {
                 440.0
-            }));
+            })));
             if web {
                 ui.set_max_width(available.x);
                 ui.set_min_size(available);
             } else if let Some(w) = crate::file_ui::dialog_width(&d.fields) {
-                ui.set_min_width(w);
-                ui.set_max_width(w);
+                ui.set_min_width(fit(w));
+                ui.set_max_width(fit(w));
             }
             // Duplicate Layer… is a fixed small grid (labels + 260 pt fields ≈ 352 pt):
             // the generic 380 pt minimum left a dead strip on its right.
             if crate::duplicate_layer_ui::owns(&d.fields) {
-                ui.set_min_width(360.0);
-                ui.set_max_width(360.0);
+                ui.set_min_width(fit(360.0));
+                ui.set_max_width(fit(360.0));
             }
             if color_picker {
-                ui.set_width(crate::color_picker_ui::CONTENT_WIDTH);
+                ui.set_width(fit(crate::color_picker_ui::CONTENT_WIDTH));
             }
             let label = egui::Label::new(egui::RichText::new(&title).font(crate::theme::semibold(15.0))).selectable(false);
             let t = if crate::color_picker_ui::owns(&fields) { ui.add_sized(egui::vec2(ui.available_width(), 22.0), label).rect } else { ui.add(label).rect };

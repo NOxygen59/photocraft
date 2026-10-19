@@ -49,7 +49,8 @@ impl Os {
     pub fn current() -> Self {
         if cfg!(windows) {
             Os::Windows
-        } else if cfg!(target_os = "macos") {
+        // iPadOS: Metal only, as on macOS (no Vulkan, DirectX or OpenGL backend there).
+        } else if cfg!(any(target_os = "macos", target_os = "ios")) {
             Os::Mac
         } else {
             Os::Other

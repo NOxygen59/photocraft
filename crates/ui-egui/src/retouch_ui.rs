@@ -114,7 +114,7 @@ pub fn finish_stroke(app: &mut PhotocraftApp, tool: Tool, points: &[[f64; 3]], m
         Tool::Healing | Tool::CloneStamp => {
             let Some(p) = clone_params(app) else {
                 // Option-click on the Mac, Alt-click on Windows.
-                app.ui.status = if cfg!(target_os = "macos") {
+                app.ui.status = if cfg!(any(target_os = "macos", target_os = "ios")) {
                     tl!("Option-click to define a source point to clone from")
                 } else {
                     tl!("Alt-click to define a source point to clone from")

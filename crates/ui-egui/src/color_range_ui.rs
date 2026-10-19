@@ -324,7 +324,7 @@ fn preview(app: &mut PhotocraftApp, ctx: &egui::Context, f: &Map<String, Value>)
             overlay_key: 0,
         });
     }
-    let image_view = (s(f, "__view", "selection") == "image") ^ ctx.input(|i| i.modifiers.command || (!cfg!(target_os = "macos") && i.modifiers.ctrl));
+    let image_view = (s(f, "__view", "selection") == "image") ^ ctx.input(|i| i.modifiers.command || (!cfg!(any(target_os = "macos", target_os = "ios")) && i.modifiers.ctrl));
     let params = params(f);
     let key = query_key(app, &params);
     let (proxy, k) = {
