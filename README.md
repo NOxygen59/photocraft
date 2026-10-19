@@ -33,6 +33,16 @@
 - **iPhone XS → 18 Pro** : interface compacte qui s'adapte à la taille de l'écran (`crates/ui-egui/src/phone.rs`).
 - **Build** : `packaging/ios/` (`.tipa`, iOS 16.0 minimum).
 
+### Versions
+
+Ce fork a sa propre numérotation, « PhotoCraft iPad », en parallèle de celle de PhotoCraft officiel :
+
+| PhotoCraft iPad | Basé sur PhotoCraft | Release | Contenu |
+|---|---|---|---|
+| 1.2 | 0.8.2 | [v0.8.2-ios16.2](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16.2) | 60 Hz par défaut, bouton 60/120 Hz, indicateur RAM / CPU / batterie |
+| 1.1 | 0.8.2 | [v0.8.2-ios16.1](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16.1) | Japonais, chinois et coréen (plus de carrés) |
+| 1.0 | 0.8.2 | [v0.8.2-ios16](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16) | Portage iPad et iPhone, gestes, rejet de la paume, Aerial |
+
 **Builds :** voir les [Releases](https://github.com/NOxygen59/photocraft/releases).
 
 ---
