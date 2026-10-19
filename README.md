@@ -29,7 +29,7 @@
 - **`vendor/egui-winit`** : ⌘ = Commande, et une touche annulée relâche le bouton.
 - **Japonais, chinois et coréen** : l'interface et les noms de fichiers utilisent les polices du système iOS (Hiragino Sans, PingFang, Apple SD Gothic Neo), cherchées par nom de fichier dans `/System/Library/Fonts` (`crates/text/src/cjk.rs`). Avant, tout s'affichait en carrés.
 - **Économie d'énergie** : le rendu est plafonné à 60 images par seconde (au lieu de 120 sur un écran ProMotion), ce qui divise par deux le travail pendant le dessin. Un bouton **60 Hz / 120 Hz** dans la barre du haut bascule à la volée, et le choix est gardé.
-- **Indicateur de ressources** : à gauche de Discord, la RAM et le CPU utilisés par PhotoCraft lui-même, plus le niveau de batterie de l'iPad. Mis à jour toutes les 2 secondes.
+- **Indicateur de ressources** : à gauche de Discord, la RAM et le CPU utilisés par PhotoCraft lui-même, plus le niveau de batterie de l'iPad. Mis à jour toutes les 2 secondes, et il se réduit dans une fenêtre étroite.
 - **iPhone XS → 18 Pro** : interface compacte qui s'adapte à la taille de l'écran (`crates/ui-egui/src/phone.rs`).
 - **Build** : `packaging/ios/` (`.tipa`, iOS 16.0 minimum).
 
@@ -39,6 +39,7 @@ Ce fork a sa propre numérotation, « PhotoCraft iPad », en parallèle de celle
 
 | PhotoCraft iPad | Basé sur PhotoCraft | Release | Contenu |
 |---|---|---|---|
+| 1.3 | 0.8.2 | [v0.8.2-ios16.3](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16.3) | Indicateur adapté aux fenêtres étroites (Aerial, Stage Manager) |
 | 1.2 | 0.8.2 | [v0.8.2-ios16.2](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16.2) | 60 Hz par défaut, bouton 60/120 Hz, indicateur RAM / CPU / batterie |
 | 1.1 | 0.8.2 | [v0.8.2-ios16.1](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16.1) | Japonais, chinois et coréen (plus de carrés) |
 | 1.0 | 0.8.2 | [v0.8.2-ios16](https://github.com/NOxygen59/photocraft/releases/tag/v0.8.2-ios16) | Portage iPad et iPhone, gestes, rejet de la paume, Aerial |

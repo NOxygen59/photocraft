@@ -760,8 +760,6 @@ pub fn sync_window_title(app: &mut PhotocraftApp, ctx: &egui::Context) {
 const TITLE_GAP: f32 = 16.0;
 /// Free room the title bar needs after its other controls to show the Discord button.
 const DISCORD_ROOM: f32 = 120.0;
-/// Room the resource readout and the frame-rate switch need left of Discord.
-const READOUT_ROOM: f32 = 250.0;
 /// How often the readout is refreshed: one quiet frame every two seconds.
 const READOUT_PERIOD: std::time::Duration = std::time::Duration::from_secs(2);
 
@@ -770,9 +768,6 @@ const READOUT_PERIOD: std::time::Duration = std::time::Duration::from_secs(2);
 /// seconds, so it costs one small redraw per period and nothing between.
 fn resource_readout(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, t: &Tokens) {
     let Some(read) = app.services.resources else { return };
-    if ui.available_width() < READOUT_ROOM {
-        return;
-    }
     let ctx = ui.ctx().clone();
     let cache_id = egui::Id::new("photocraft.resource_readout");
     let fps_id = egui::Id::new("photocraft.max_frame_rate");
@@ -800,6 +795,9 @@ fn resource_readout(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, t: &Token
     if let Some(set) = app.services.set_max_frame_rate {
         let label = egui::RichText::new(format!("{fps} Hz")).color(if fps > 60 { t.accent } else { t.text_dim }).size(12.0).monospace();
         let tip = tl!("Maximum frame rate: 60 Hz saves battery and heat, 120 Hz is smoother. Tap to switch.");
+        if ui.available_width() < 70.0 {
+            return;
+        }
         ui.add_space(4.0);
         let button = egui::Button::new(label).fill(t.accent_soft.gamma_multiply(if fps > 60 { 1.0 } else { 0.4 })).corner_radius(4.0).min_size(egui::vec2(52.0, 20.0));
         if ui.add(button).on_hover_text(tip).clicked() {
@@ -821,13 +819,25 @@ fn resource_readout(app: &mut crate::PhotocraftApp, ui: &mut egui::Ui, t: &Token
     } else {
         crate::i18n::fmt(tl!("{n} MB"), &[("n", &format!("{mib:.0}"))])
     };
-    let mut text = format!("{} {memory}  ·  {} {:.0} %", tl!("RAM"), tl!("CPU"), reading.cpu_percent);
+    let base = format!("{} {memory}  ·  {} {:.0} %", tl!("RAM"), tl!("CPU"), reading.cpu_percent);
+    let mut full = base.clone();
     if let Some(level) = reading.battery_percent {
-        text.push_str(&format!("  ·  {} {level:.0} %", tl!("Battery")));
+        full.push_str(&format!("  ·  {} {level:.0} %", tl!("Battery")));
         if reading.charging {
-            text.push_str(" +");
+            full.push_str(" +");
         }
     }
+    // A narrow window (Stage Manager, Aerial) drops the battery, then the whole readout.
+    let font = egui::FontId::monospace(12.0);
+    let width = |s: &str| ui.painter().layout_no_wrap(s.to_string(), font.clone(), t.text_dim).size().x + 8.0;
+    let room = ui.available_width();
+    let text = if width(&full) <= room {
+        full
+    } else if width(&base) <= room {
+        base
+    } else {
+        return;
+    };
     let tip = tl!("Memory and processor used by PhotoCraft itself, and the battery level. Updated every 2 seconds.");
     ui.add_space(8.0);
     ui.add(egui::Label::new(egui::RichText::new(text).color(t.text_dim).size(12.0).monospace()).selectable(false)).on_hover_text(tip);
