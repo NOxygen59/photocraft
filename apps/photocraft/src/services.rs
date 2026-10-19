@@ -570,6 +570,8 @@ pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) ->
         preset_store: None,
         is_wayland: false,
         safe_area: safe_area_service(),
+        resources: resources_service(),
+        set_max_frame_rate: frame_rate_service(),
         ..recovery_services(recovery_dir())
     }
 }
@@ -578,6 +580,30 @@ pub fn native(automation: Option<photocraft_automation::AuthorizedWorkspace>) ->
 fn safe_area_service() -> Option<fn() -> [f32; 4]> {
     #[cfg(target_os = "ios")]
     return Some(photocraft_ios::safe_area_insets);
+    #[cfg(not(target_os = "ios"))]
+    None
+}
+
+/// The memory and CPU PhotoCraft uses and the battery level, for the title bar readout (iPad).
+fn resources_service() -> Option<fn() -> photocraft_ui_egui::ResourceReading> {
+    #[cfg(target_os = "ios")]
+    return Some(|| {
+        let r = photocraft_ios::resources();
+        photocraft_ui_egui::ResourceReading {
+            memory_bytes: r.memory_bytes,
+            cpu_percent: r.cpu_percent,
+            battery_percent: r.battery_percent,
+            charging: r.charging,
+        }
+    });
+    #[cfg(not(target_os = "ios"))]
+    None
+}
+
+/// The 60 / 120 Hz switch: winit's iOS frame gate (iPad patch, `vendor/winit`).
+fn frame_rate_service() -> Option<fn(u32)> {
+    #[cfg(target_os = "ios")]
+    return Some(winit::platform::ios::set_max_frame_rate);
     #[cfg(not(target_os = "ios"))]
     None
 }

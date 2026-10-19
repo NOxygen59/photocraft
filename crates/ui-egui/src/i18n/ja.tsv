@@ -3821,3 +3821,10 @@ curves	Smooth	スムーズ
 	Reset All Locked Settings	ロックされた設定をすべて初期化
 	Copy Texture to Other Tools	テクスチャを他のツールにコピー
 	ICO is limited to 256 × 256 pixels	ICO は 256 × 256 ピクセルまでです
+	RAM	メモリ
+	CPU	CPU
+	Battery	バッテリー
+	{n} MB	{n} MB
+	{n} GB	{n} GB
+	Maximum frame rate: 60 Hz saves battery and heat, 120 Hz is smoother. Tap to switch.	最大フレームレート：60 Hz はバッテリーを節約し発熱を抑えます。120 Hz はより滑らかです。タップで切り替え。
+	Memory and processor used by PhotoCraft itself, and the battery level. Updated every 2 seconds.	PhotoCraft 自体が使用しているメモリとプロセッサ、およびバッテリー残量。2 秒ごとに更新。

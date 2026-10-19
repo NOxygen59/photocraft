@@ -4908,6 +4908,7 @@ dependencies = [
 name = "photocraft-ios"
 version = "0.8.2"
 dependencies = [
+ "libc",
  "log",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",

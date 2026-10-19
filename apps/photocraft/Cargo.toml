@@ -63,6 +63,7 @@ dispatch2 = { version = "=0.3.1", default-features = false, features = ["std"] }
 # iPadOS: the Files document picker and the pasteboard (an isolated helper crate, as the tablet
 # one is: UIKit needs Objective-C interop, which the workspace forbids elsewhere).
 [target.'cfg(target_os = "ios")'.dependencies]
+winit = { version = "=0.30.13", default-features = false }
 photocraft-ios = { workspace = true }
 
 # Desktop only: iOS has no file-dialog backend in rfd and no arboard backend (src/ios.rs instead).

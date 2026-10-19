@@ -153,3 +153,48 @@ pub fn safe_area_insets() -> [f32; 4] {
     let i = window.safeAreaInsets();
     [i.top, i.left, i.bottom, i.right].map(|v| v as f32)
 }
+
+/// The memory and CPU PhotoCraft uses, and the battery level. Cheap (two system calls and two
+/// UIDevice properties); the CPU share is measured since the previous call. Main thread for the
+/// battery (zero off it).
+pub fn resources() -> crate::Resources {
+    use std::sync::Mutex;
+    use std::time::Instant;
+    static LAST: Mutex<Option<(Instant, f64)>> = Mutex::new(None);
+
+    let mut out = crate::Resources::default();
+    // The footprint is what Xcode's memory gauge and iPadOS's memory limit use.
+    let mut info: libc::rusage_info_v2 = unsafe { std::mem::zeroed() };
+    let ok = unsafe { libc::proc_pid_rusage(libc::getpid(), libc::RUSAGE_INFO_V2, (&raw mut info).cast()) };
+    if ok == 0 {
+        out.memory_bytes = info.ri_phys_footprint;
+    }
+    let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
+    if unsafe { libc::getrusage(libc::RUSAGE_SELF, &raw mut usage) } == 0 {
+        let secs = |t: libc::timeval| t.tv_sec as f64 + f64::from(t.tv_usec) / 1e6;
+        let cpu = secs(usage.ru_utime) + secs(usage.ru_stime);
+        let now = Instant::now();
+        let mut last = LAST.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((then, before)) = *last {
+            let wall = now.duration_since(then).as_secs_f64();
+            let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get) as f64;
+            if wall > 0.0 {
+                out.cpu_percent = ((cpu - before) / wall / cores * 100.0).clamp(0.0, 100.0) as f32;
+            }
+        }
+        *last = Some((now, cpu));
+    }
+    if let Some(mtm) = MainThreadMarker::new() {
+        let device = objc2_ui_kit::UIDevice::currentDevice(mtm);
+        if !device.isBatteryMonitoringEnabled() {
+            device.setBatteryMonitoringEnabled(true);
+        }
+        let level = device.batteryLevel();
+        if level >= 0.0 {
+            out.battery_percent = Some(level * 100.0);
+        }
+        let state = device.batteryState();
+        out.charging = state == objc2_ui_kit::UIDeviceBatteryState::Charging || state == objc2_ui_kit::UIDeviceBatteryState::Full;
+    }
+    out
+}

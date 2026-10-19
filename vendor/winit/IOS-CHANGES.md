@@ -51,6 +51,15 @@ All APIs used are available from iOS 13.4, so the app keeps its iOS 16.0 minimum
   later so egui sees a click). Cancelled before that, by a gesture or by palm rejection, it never
   does. Fingers that land together are never touches, only gestures.
 
+## Frame rate (`app_state.rs`, `platform/ios.rs`)
+
+- A frame gate caps redraws at 60 per second by default (`frame_gate`): on a ProMotion iPad every
+  touch could redraw at 120 Hz, which doubles the CPU and GPU work while drawing for no gain in
+  image editing. Requests that come too early are merged and issued at the next slot (the run
+  loop's timer wakes up for them); an idle app requests nothing, so it is unaffected.
+- `winit::platform::ios::set_max_frame_rate(fps)` changes the cap at run time: 60, or 0 / 120 for
+  the display's own rate. PhotoCraft switches it from the title bar.
+
 egui-winit 0.36.2 (`vendor/egui-winit`, MIT OR Apache-2.0) is patched in two places: ⌘ is Command
 on iOS as on macOS (`ModifiersChanged`), and a cancelled touch releases the button (egui kept it
 down after `PointerGone`).

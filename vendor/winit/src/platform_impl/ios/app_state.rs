@@ -399,6 +399,15 @@ impl AppState {
                 self.waker.start()
             },
         }
+        // Redraws held back by the frame gate: wake up when the next frame is allowed (or
+        // earlier, if the app already asked to).
+        if let Some(due) = frame_gate::deferred_until() {
+            match new {
+                ControlFlow::Poll => {},
+                ControlFlow::WaitUntil(instant) => self.waker.start_at(instant.min(due)),
+                ControlFlow::Wait => self.waker.start_at(due),
+            }
+        }
     }
 
     fn terminated_transition(&mut self) -> EventLoopHandler {
@@ -701,8 +710,7 @@ pub fn handle_main_events_cleared(mtm: MainThreadMarker) {
     handle_user_events(mtm);
 
     let mut this = AppState::get_mut(mtm);
-    let redraw_events: Vec<EventWrapper> = this
-        .main_events_cleared_transition()
+    let redraw_events: Vec<EventWrapper> = frame_gate::admit(this.main_events_cleared_transition())
         .into_iter()
         .map(|window| {
             EventWrapper::StaticEvent(Event::WindowEvent {
@@ -922,4 +930,64 @@ pub fn os_capabilities() -> OSCapabilities {
     // Cache the version lookup for efficiency
     static OS_CAPABILITIES: OnceLock<OSCapabilities> = OnceLock::new();
     OS_CAPABILITIES.get_or_init(|| OSCapabilities::from_os_version(get_version())).clone()
+}
+
+/// Caps how often the app redraws (PhotoCraft, iPad patch). On a ProMotion iPad every touch
+/// and every egui animation could redraw at 120 Hz; image editing needs no more than 60, and
+/// half the frames is half the CPU and GPU work while drawing, zooming or panning. Redraw
+/// requests that come too early are held (merged per window) and issued at the next slot; an
+/// idle app is unaffected, since nothing is requested.
+pub(crate) mod frame_gate {
+    use std::cell::{Cell, RefCell};
+    use std::collections::HashSet;
+    use std::time::{Duration, Instant};
+
+    use objc2::rc::Retained;
+
+    use super::super::window::WinitUIWindow;
+
+    /// The shortest time between two redraws: a little under 1/60 s by default, so frames still
+    /// land on every other 120 Hz refresh; zero lets the display's own rate (ProMotion) pace them.
+    fn min_interval() -> Duration {
+        INTERVAL.get()
+    }
+
+    /// Redraws per second at most; 0 (or anything at or above 120) means no cap.
+    pub(crate) fn set_max_frame_rate(fps: u32) {
+        let interval = if fps == 0 || fps >= 120 { Duration::ZERO } else { Duration::from_micros(1_000_000 / u64::from(fps) - 900) };
+        INTERVAL.set(interval);
+    }
+
+    #[derive(Default)]
+    struct Gate {
+        last: Option<Instant>,
+        deferred: HashSet<Retained<WinitUIWindow>>,
+    }
+
+    thread_local! {
+        static GATE: RefCell<Gate> = RefCell::new(Gate::default());
+        static INTERVAL: Cell<Duration> = const { Cell::new(Duration::from_micros(15_800)) };
+    }
+
+    /// The windows to redraw now: all of them (with any held back) once the interval has
+    /// passed, none before (they wait for [`deferred_until`]).
+    pub(super) fn admit(windows: HashSet<Retained<WinitUIWindow>>) -> HashSet<Retained<WinitUIWindow>> {
+        GATE.with_borrow_mut(|gate| {
+            gate.deferred.extend(windows);
+            if gate.deferred.is_empty() {
+                return HashSet::new();
+            }
+            let now = Instant::now();
+            if gate.last.is_some_and(|last| now.duration_since(last) < min_interval()) {
+                return HashSet::new();
+            }
+            gate.last = Some(now);
+            std::mem::take(&mut gate.deferred)
+        })
+    }
+
+    /// When held-back redraws may be issued, if there are any.
+    pub(super) fn deferred_until() -> Option<Instant> {
+        GATE.with_borrow(|gate| (!gate.deferred.is_empty()).then(|| gate.last.map_or_else(Instant::now, |last| last + min_interval())))
+    }
 }

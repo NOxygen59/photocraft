@@ -3146,3 +3146,10 @@ curves	Smooth	Lisser
 	Sent to {printer}	Envoyé à {printer}
 	set in Print Settings…	défini dans les paramètres d’impression…
 	ICO is limited to 256 × 256 pixels	Le format ICO est limité à 256 × 256 pixels
+	RAM	RAM
+	CPU	CPU
+	Battery	Batterie
+	{n} MB	{n} Mo
+	{n} GB	{n} Go
+	Maximum frame rate: 60 Hz saves battery and heat, 120 Hz is smoother. Tap to switch.	Fréquence d'affichage maximale : 60 Hz économise la batterie et chauffe moins, 120 Hz est plus fluide. Touchez pour changer.
+	Memory and processor used by PhotoCraft itself, and the battery level. Updated every 2 seconds.	Mémoire et processeur utilisés par PhotoCraft lui-même, et niveau de la batterie. Mis à jour toutes les 2 secondes.

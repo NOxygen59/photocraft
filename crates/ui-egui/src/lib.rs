@@ -394,6 +394,18 @@ pub type WindowFrameFn = Box<dyn FnMut()>;
 /// The caption buttons' current style ([`Services::caption_style`]).
 pub type CaptionStyleFn = Box<dyn Fn(&egui::Context) -> CaptionStyle>;
 
+/// A reading of what the app uses, for the title bar's readout ([`Services::resources`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ResourceReading {
+    /// The app's memory footprint in bytes.
+    pub memory_bytes: u64,
+    /// The app's share of all CPU cores, 0–100.
+    pub cpu_percent: f32,
+    /// The device's battery level, 0–100, when known.
+    pub battery_percent: Option<f32>,
+    pub charging: bool,
+}
+
 /// Platform services injected by the app binary (file dialogs, codecs), keeping this crate free of
 /// I/O dependencies.
 #[derive(Default)]
@@ -491,6 +503,11 @@ pub struct Services {
     /// Dynamic Island, the screen corners and the home indicator are (iOS). The phone layout keeps
     /// them clear (`phone::safe_area`).
     pub safe_area: Option<fn() -> [f32; 4]>,
+    /// What the app itself uses (memory, CPU) and the battery level, shown in the title bar
+    /// next to Discord (iPad). Read every two seconds.
+    pub resources: Option<fn() -> ResourceReading>,
+    /// Caps redraws per second (60 or 120 on a ProMotion iPad), switched from the title bar.
+    pub set_max_frame_rate: Option<fn(u32)>,
 }
 
 /// A document histogram being computed off the UI thread: (document, revision, receiver of

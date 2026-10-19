@@ -84,6 +84,13 @@ use crate::monitor::{MonitorHandle, VideoModeHandle};
 use crate::window::{Window, WindowAttributes};
 
 /// Additional methods on [`EventLoop`] that are specific to iOS.
+/// Caps how many times per second windows are redrawn (PhotoCraft's iPad patch): 60 halves the
+/// work of a ProMotion display while drawing; 0 or 120 lets the display pace redraws. Call from
+/// the main thread; it applies from the next frame.
+pub fn set_max_frame_rate(fps: u32) {
+    crate::platform_impl::set_max_frame_rate(fps)
+}
+
 pub trait EventLoopExtIOS {
     /// Returns the [`Idiom`] (phone/tablet/tv/etc) for the current device.
     fn idiom(&self) -> Idiom;

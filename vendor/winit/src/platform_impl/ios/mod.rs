@@ -1,6 +1,11 @@
 #![allow(clippy::let_unit_value)]
 
 mod app_state;
+
+/// See [`crate::platform::ios::set_max_frame_rate`].
+pub(crate) fn set_max_frame_rate(fps: u32) {
+    app_state::frame_gate::set_max_frame_rate(fps)
+}
 mod event_loop;
 mod keyboard;
 mod monitor;
