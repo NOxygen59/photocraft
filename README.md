@@ -27,6 +27,7 @@
   - rejet de la paume par iPadOS ;
   - pression de l'Apple Pencil.
 - **`vendor/egui-winit`** : ⌘ = Commande, et une touche annulée relâche le bouton.
+- **Japonais, chinois et coréen** : l'interface et les noms de fichiers utilisent les polices du système iOS (Hiragino Sans, PingFang, Apple SD Gothic Neo), cherchées par nom de fichier dans `/System/Library/Fonts` (`crates/text/src/cjk.rs`). Avant, tout s'affichait en carrés.
 - **iPhone XS → 18 Pro** : interface compacte qui s'adapte à la taille de l'écran (`crates/ui-egui/src/phone.rs`).
 - **Build** : `packaging/ios/` (`.tipa`, iOS 16.0 minimum).
 

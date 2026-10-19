@@ -380,6 +380,29 @@ pub fn font_files(script: CjkScript) -> Vec<FontFile> {
             TraditionalChinese => pingfang("PingFang TC".to_string()).into_iter().chain([f("/System/Library/Fonts/STHeiti Light.ttc", "Heiti TC")]).collect(),
             Korean => vec![f("/System/Library/Fonts/AppleSDGothicNeo.ttc", "Apple SD Gothic Neo")],
         }
+    } else if cfg!(target_os = "ios") {
+        // iOS moves its CJK fonts between releases (iOS 27: Core/HiraginoKakuGothic.ttc,
+        // FontServices' CorePrivate/PingFangUI.ttc): look them up by file name. The collections
+        // hold several weights; the family picks the regular text face (Hiragino Sans W3).
+        let found = |pattern: &str, family: &str| -> Vec<FontFile> {
+            ios_font_files().iter().filter(|p| file_name_has(p, pattern)).map(|path| FontFile { path: path.clone(), family: family.to_string() }).collect()
+        };
+        let pingfang = |han: &str| -> Vec<FontFile> {
+            ios_font_files()
+                .iter()
+                .filter(|p| file_name_has(p, "pingfang"))
+                .map(|path| {
+                    let ui = file_name_has(path, "pingfangui");
+                    FontFile { path: path.clone(), family: if ui { format!(".PingFang UI {han}") } else { format!("PingFang {han}") } }
+                })
+                .collect()
+        };
+        match script {
+            Japanese => [found("hiraginokakugothic", "Hiragino Sans"), found("hiraginosans", "Hiragino Sans"), found("hiraginomarugoth", "")].concat(),
+            SimplifiedChinese => [pingfang("SC"), found("hiraginosansgb", "")].concat(),
+            TraditionalChinese => pingfang("TC"),
+            Korean => found("applesdgothicneo", "Apple SD Gothic Neo"),
+        }
     } else if cfg!(target_os = "windows") {
         let dir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
         let w = |file: &str, family: &'static str| FontFile { path: std::path::Path::new(&dir).join("Fonts").join(file), family: family.to_string() };
@@ -440,6 +463,43 @@ pub fn font_files(script: CjkScript) -> Vec<FontFile> {
         }
         files
     }
+}
+
+/// Every font file under iOS's system font folders (read once; a few hundred names).
+#[cfg(not(target_arch = "wasm32"))]
+fn ios_font_files() -> &'static [std::path::PathBuf] {
+    static FILES: std::sync::OnceLock<Vec<std::path::PathBuf>> = std::sync::OnceLock::new();
+    FILES.get_or_init(|| {
+        let mut out = Vec::new();
+        let mut dirs: Vec<std::path::PathBuf> =
+            ["/System/Library/Fonts", "/System/Library/PrivateFrameworks/FontServices.framework/CorePrivate"].iter().map(Into::into).collect();
+        // Two levels are enough (Fonts/Core, Fonts/CoreUI, ...); bounded so a strange tree can't stall.
+        let mut depth = 0;
+        while !dirs.is_empty() && depth < 3 {
+            let mut next = Vec::new();
+            for dir in dirs {
+                let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+                for e in entries.flatten() {
+                    let path = e.path();
+                    if path.is_dir() {
+                        next.push(path);
+                    } else if matches!(path.extension().and_then(|x| x.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("ttc" | "ttf" | "otf")) {
+                        out.push(path);
+                    }
+                }
+            }
+            dirs = next;
+            depth += 1;
+        }
+        out.sort();
+        out
+    })
+}
+
+/// Whether a path's file name, lowercased without spaces, contains `pattern`.
+#[cfg(not(target_arch = "wasm32"))]
+fn file_name_has(path: &std::path::Path, pattern: &str) -> bool {
+    path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.to_ascii_lowercase().replace(' ', "").contains(pattern))
 }
 
 /// Flatpak mounts the host system font directory outside the runtime's `/usr/share/fonts`.
